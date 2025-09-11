@@ -1,5 +1,4 @@
 
-# Copy to terraform.tfvars and fill your own values
 subscription_id     = "00000000-0000-0000-0000-000000000000"
 location            = "Central India"
 resource_group_name = "rg-devops-starter"
