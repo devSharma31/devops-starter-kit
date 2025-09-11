@@ -1,0 +1,27 @@
+
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+.env.*
+# Node / misc
+node_modules/
+# IDE
+.vscode/
+.idea/
+# Build
+dist/
+build/
+# Python tooling
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+# Sonar
+.scannerwork/

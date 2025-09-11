@@ -1,0 +1,71 @@
+
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Run tests
+        run: pytest -q
+
+      # --- Optional: SonarCloud (uncomment to enable) ---
+      # - name: SonarCloud Scan
+      #   if: ${{ github.event_name != 'pull_request' }}
+      #   uses: SonarSource/sonarcloud-github-action@master
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #   with:
+      #     args: >
+      #       -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+      #       -Dsonar.organization=${{ vars.SONAR_ORG }}
+      #       -Dsonar.python.version=3.11
+
+  # --- Optional: Deploy to Azure Web App (manual approval via env) ---
+  # deploy:
+  #   needs: build-test
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: app
+  #         path: .
+  #     - name: Download artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: app
+  #         path: .
+  #     - name: Azure WebApp Deploy
+  #       uses: azure/webapps-deploy@v3
+  #       with:
+  #         app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+  #         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+  #         package: .
