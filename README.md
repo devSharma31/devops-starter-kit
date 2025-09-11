@@ -1,98 +1,209 @@
+# DevOps Starter Kit — FastAPI • Docker • CI/CD • Azure • Terraform
 
-# DevOps Starter Kit — FastAPI • Docker • CI/CD • Azure • Terraform (foundational)
+![CI/CD](https://github.com/devSharma31/devops-starter-kit/actions/workflows/ci-cd.yml/badge.svg?branch=main)
 
-This is a **sandbox** project to help you demonstrate real DevOps skills safely and honestly for interviews.
-
-## What you get
-- **FastAPI** app with `/health`
-- **Dockerfile** and `docker-compose.yml`
-- **Pytest** unit test
-- **GitHub Actions** CI (build + test + lint) — with commented sections for **SonarCloud** and **Azure Web App** deploy
-- **Terraform (foundational)** to provision an Azure Resource Group, Linux App Service Plan, and Web App
-- **README** instructions + rollback notes
-
-> ⚠️ Auth/secrets are placeholders. Don’t commit real credentials.
+A **sandbox** project to demonstrate real DevOps skills safely and honestly for interviews.
 
 ---
 
-## 1) Run locally (no Docker)
-```bash
-python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+## What’s inside
+- **FastAPI** app with `/health` and a root redirect (`/` → `/health`)
+- **Dockerfile** and `docker-compose.yml`
+- **Pytest** unit test
+- **GitHub Actions** CI/CD (lint + test + **deploy to Azure Web App**)
+- **Terraform (foundational)**: Azure Resource Group, Linux App Service Plan, Web App
+- **README** instructions, rollback notes, and **evidence** screenshots
+
+> ⚠️ Never commit secrets. Use GitHub **Secrets**.
+
+---
+
+## Prereqs
+- Python **3.11+**
+- Git
+- (Optional) Docker Desktop
+- Azure CLI (`az`) and Terraform (only needed if you run Terraform locally)
+
+---
+
+## 1) Run locally
+
+### Windows (PowerShell)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-# Visit http://127.0.0.1:8000/health
+# http://127.0.0.1:8000/health
+
+```
+
+### MacOS / Linux
+```
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+# http://127.0.0.1:8000/health
+
 ```
 
 ## 2) Run with Docker
-```bash
 docker compose up --build
-# Visit http://127.0.0.1:8000/health
+```
+http://127.0.0.1:8000/health
 ```
 
+
+
 ## 3) Tests
-```bash
+```
 pytest -q
 ```
 
----
 
-## 4) GitHub Actions CI
-Workflow file: `.github/workflows/ci-cd.yml`
+## 4) CI/CD with GitHub Actions
 
-- Runs on push/PR: setup Python → install deps → lint (ruff) → tests.
-- **Optional SonarCloud** step is commented. To enable:
-  1. Create a SonarCloud project.
-  2. Add repo **Secrets**: `SONAR_TOKEN`.
-  3. Add repo **Variables**: `SONAR_ORG`, `SONAR_PROJECT_KEY`.
-  4. Uncomment the Sonar step and `sonar-project.properties` content.
+Workflow: .github/workflows/ci-cd.yml
 
-- **Optional Deploy to Azure Web App** step is commented. To enable:
-  1. Create an Azure Web App (Linux).
-  2. In Azure Portal → Web App → **Get publish profile**.
-  3. Add repo **Secret**: `AZURE_WEBAPP_PUBLISH_PROFILE` with the XML content.
-  4. Set `AZURE_WEBAPP_NAME` in repo **Variables**.
-  5. Uncomment the deploy step.
-  6. Protect `production` environment in GitHub (requires manual approval).
+Pipeline
 
----
+- On push/PR to main: Setup Python → install deps → ruff → pytest
+
+- Then deploys to Azure Web App using a Publish Profile secret
+
+Required repo secret (one-time)
+
+-AZURE_WEBAPP_PUBLISH_PROFILE → paste the XML from Azure Portal → App Service → Get publish profile
+(or via CLI: az webapp deployment list-publishing-profiles --resource-group <rg> --name <webapp> --xml)
+
+
+App name
+
+-Hard-coded in the workflow deploy job:
+```
+env:
+  AZURE_WEBAPP_NAME: devops-starter-webapp-dev31
+```
+Change here if you rename the app.
+
 
 ## 5) Terraform (foundational)
-**Folder:** `terraform/`
-
-> You need an Azure subscription. This creates: Resource Group, Linux App Service Plan (B1 by default), and a Web App.
-
-```bash
+```
+Folder: terraform/ — Creates Resource Group, Linux App Service Plan, Web App.
+```
+```
 cd terraform
-cp terraform.tfvars.example terraform.tfvars  # edit values
+# Windows: copy terraform.tfvars.example terraform.tfvars
+# macOS/Linux:
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars:
+# - subscription_id = "<your-sub-id>"
+# - webapp_name     = "devops-starter-webapp-<unique>"
+# - location        = "Central India" (or nearest)
+# - sku_name        = "F1" (Free; if unavailable, use "B1")
 terraform init
 terraform plan
 terraform apply
 ```
 
-**Rollback:** `terraform destroy` — or in emergencies, stop the Web App (Portal → Your Web App → Stop).
+Outputs
+```
+terraform output webapp_url
+```
 
----
+Refresh-only apply (nice for screenshots)
+```
+terraform apply -refresh-only
+```
 
-## 6) Rollback strategy (App Service)
-- If using **Deploy Slots** (recommended), swap back to last known good slot.
-- If using single slot, re-deploy last **green artifact** from Actions → `Download artifact` → redeploy.
-- Keep a simple **RUNBOOK.md** with exact commands (add your own screenshots).
+Rollback / clean-up
+terraform destroy
+```
+# Emergency: stop Web App in Portal
+```
 
----
+## 6) App Service configuration (how it boots)
 
-## 7) What to screenshot for your portfolio
-- Successful Actions run (build + test).
-- SonarCloud Quality Gate (if enabled).
-- Docker container running locally + `/health` response.
-- Azure Web App → Deployment Center logs (if deployed).
-- Terraform `plan`/`apply` output + resources in Portal.
-- Azure Monitor alert rule and a fired test alert email.
+- Startup command required for FastAPI on App Service:
+```
+gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app
+```
 
----
+(Set via Terraform/CLI.)
 
-## 8) Next steps / Extensions
-- Add a staging slot and enable **slot swap** in deploy step.
-- Remote state for Terraform (Azure Storage).
-- Add **PostgreSQL** (Azure Flexible Server) or containerized Postgres with secrets.
-- Wire **Azure Monitor** alerts for 5xx spikes and CPU > 80%.
-- Add basic **cost tags** to resources.
+- HTTPS only:
+```
+az webapp update -g rg-devops-starter -n devops-starter-webapp-dev31 --set httpsOnly=true
+```
+
+- Free (F1) plan: always_on = false and cold starts are normal after idle.
+
+
+## 7) Proofs & Screenshots
+
+Place all images in /evidence:
+
+- CI → CD success:
+
+- Deploy logs:
+
+- Terraform apply (refresh-only) & outputs:
+
+- Azure resources:
+
+- Live health:
+
+(Optional extras)
+
+- Secrets present (name only): evidence/06-secrets-present.png
+
+- Startup command set: evidence/07-startup-cmd.png
+
+- App logs (startup): evidence/08-log-startup.png
+
+- Alerts (rule + email): evidence/09-alert-rule.png, evidence/10-alert-email.png
+
+
+
+## 8) Extensions (great interview talking points)
+
+- Deployment Slots + slot swap for zero-downtime rollouts
+
+- Remote state for Terraform (Azure Storage + SAS)
+
+- PostgreSQL (Azure Flexible Server) or containerized DB (secrets in Key Vault)
+
+- Azure Monitor metrics/alerts (CPU, 5xx, latency p95, availability SLO)
+
+- Cost tags on resources (project, owner, env)
+
+
+
+## 9) Troubleshooting quickies
+
+- Deploy step: “Missing AZURE_WEBAPP_PUBLISH_PROFILE”
+  Re-create the repo secret and paste the full XML (don’t trim).
+
+- App returns 500 after deploy
+  Ensure startup command is set, then restart:
+```
+az webapp config set -g rg-devops-starter -n devops-starter-webapp-dev31 --startup-file "gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app"
+
+az webapp restart     -g rg-devops-starter -n devops-starter-webapp-dev31
+```
+
+- Pytest import error for app
+  Ensure app/__init__.py exists and CI sets PYTHONPATH if needed.
+
+- requirements.txt parse error
+  Re-save as UTF-8/ASCII (no UTF-16 BOM / null bytes).
+
+
+
+
+## 10) License
+
+MIT (or your choice).
+```
+::contentReference[oaicite:0]{index=0}
+```
