@@ -37,16 +37,18 @@ jobs:
     needs: build-test
     runs-on: ubuntu-latest
     environment: production
+    # Hard-code the app name here to avoid VS Code warnings from vars.*
+    env:
+      AZURE_WEBAPP_NAME: devops-starter-webapp-dev31
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Sanity check: ensures secret/variable exist at runtime
-      - name: Check contexts
+      # Sanity check: ensure secret exists at runtime (won’t print it)
+      - name: Check publish profile presence
         run: |
-          echo "AZURE_WEBAPP_NAME=${{ vars.AZURE_WEBAPP_NAME }}"
-          if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
-            echo "❌ Missing AZURE_WEBAPP_PUBLISH_PROFILE secret"; exit 1
+          if [ -z "${{ secrets['AZURE_WEBAPP_PUBLISH_PROFILE'] }}" ]; then
+            echo "❌ Missing secret: AZURE_WEBAPP_PUBLISH_PROFILE"; exit 1
           else
             echo "✅ Publish profile secret present"
           fi
@@ -54,6 +56,7 @@ jobs:
       - name: Azure WebApp Deploy
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          # Use bracket notation; the action reads the secret at runtime
+          publish-profile: ${{ secrets['AZURE_WEBAPP_PUBLISH_PROFILE'] }}
           package: .
