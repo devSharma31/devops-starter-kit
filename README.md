@@ -4,6 +4,12 @@
 
 A **sandbox** project to demonstrate real DevOps skills safely and honestly for interviews.
 
+## Why this matters (interview lens)
+- Support/Cloud: Health probe + rollback runbook = safe, reversible changes.
+- DevOps: GitHub Actions pipeline (lint/test/deploy), Terraform RG/AppService/WebApp.
+- Evidence: screenshots in /evidence for CI→CD logs, tf apply outputs, and alerts.
+> Demo: push → pipeline → Azure live /health in ~2–3 min.
+
 ---
 
 ## What’s inside
