@@ -1,6 +1,7 @@
 # DevOps Starter Kit — FastAPI • Docker • CI/CD • Azure • Terraform
 
 ![CI/CD](https://github.com/devSharma31/devops-starter-kit/actions/workflows/ci-cd.yml/badge.svg?branch=main)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
 A **sandbox** project to demonstrate real DevOps skills safely and honestly for interviews.
 
@@ -24,6 +25,17 @@ A **sandbox** project to demonstrate real DevOps skills safely and honestly for 
 
 ---
 
+## Quick Start
+1. **Fork/clone** this repo.
+2. **Secrets (Repo → Settings → Secrets & variables → Actions):**
+   - `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`, `AZURE_PUBLISH_PROFILE` (or OIDC if you’ve set it up)
+3. **Run locally**:
+   ```bash
+   uvicorn app.main:app --reload
+   curl http://127.0.0.1:8000/health
+4. **Deploy: push to main. Check Actions → on success, browse https://<webapp-name>.azurewebsites.net/health.
+
+---
 ## Prereqs
 - Python **3.11+**
 - Git
@@ -171,7 +183,7 @@ Place all images in /evidence:
 
 
 
-## 8) Extensions (great interview talking points)
+## 8) Extensions 
 
 - Deployment Slots + slot swap for zero-downtime rollouts
 
