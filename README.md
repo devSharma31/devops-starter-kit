@@ -33,7 +33,7 @@ A **sandbox** project to demonstrate real DevOps skills safely and honestly for 
    ```bash
    uvicorn app.main:app --reload
    curl http://127.0.0.1:8000/health
-4. **Deploy: push to main. Check Actions → on success, browse https://<webapp-name>.azurewebsites.net/health.
+4. **Deploy: push to main.** Check Actions → on success, browse https://<webapp-name>.azurewebsites.net/health.
 
 ---
 ## Prereqs
