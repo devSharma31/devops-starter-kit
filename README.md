@@ -171,16 +171,6 @@ Place all images in /evidence:
 
 - Live health:
 
-(Optional extras)
-
-- Secrets present (name only): evidence/06-secrets-present.png
-
-- Startup command set: evidence/07-startup-cmd.png
-
-- App logs (startup): evidence/08-log-startup.png
-
-- Alerts (rule + email): evidence/09-alert-rule.png, evidence/10-alert-email.png
-
 
 
 ## 8) Extensions 
