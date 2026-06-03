@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DevOps Starter Kit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F5F5F4; color: #1a1a1a; min-height: 100vh; }
+    .topbar { background: #fff; border-bottom: 1px solid #E5E5E3; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-logo { width: 32px; height: 32px; border-radius: 8px; background: #185FA5; display: flex; align-items: center; justify-content: center; }
+    .topbar-logo i { color: #E6F1FB; font-size: 16px; }
+    .topbar-title { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+    .topbar-sub { font-size: 11px; color: #888; }
+    .status-pill { display: flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 99px; background: #EAF3DE; font-size: 11px; font-weight: 500; color: #3B6D11; border: 1px solid #C0DD97; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #3B6D11; }
+    .layout { display: grid; grid-template-columns: 210px 1fr; min-height: calc(100vh - 57px); }
+    .sidebar { background: #fff; border-right: 1px solid #E5E5E3; padding: 16px 8px; }
+    .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #aaa; margin: 16px 8px 6px; }
+    .sidebar-label:first-child { margin-top: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; font-size: 13px; color: #555; cursor: pointer; margin-bottom: 2px; user-select: none; }
+    .nav-item:hover { background: #F5F5F4; }
+    .nav-item.active { background: #E6F1FB; color: #185FA5; font-weight: 500; }
+    .nav-item i { font-size: 15px; }
+    .nav-badge { margin-left: auto; padding: 1px 7px; border-radius: 99px; font-size: 10px; font-weight: 500; background: #E6F1FB; color: #185FA5; }
+    .nav-badge.green { background: #EAF3DE; color: #3B6D11; }
+    .nav-item.disabled { opacity: 0.45; cursor: default; }
+    .main { padding: 28px 32px; max-width: 860px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .page-sub { font-size: 12px; color: #888; margin-bottom: 20px; }
+    .metrics-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .metric-card { background: #fff; border: 1px solid #E5E5E3; border-radius: 10px; padding: 14px 16px; }
+    .metric-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .metric-val { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+    .metric-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+    .stack-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .stack-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid #E5E5E3; background: #fff; color: #555; }
+    .stack-chip.ai { background: #FAEEDA; color: #854F0B; border-color: #FAC775; }
+    .endpoint-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .endpoint-row { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E5E5E3; border-radius: 10px; padding: 11px 16px; }
+    .endpoint-row.ai-row { border-color: #B5D4F4; }
+    .method-badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; font-family: monospace; flex-shrink: 0; }
+    .get { background: #EAF3DE; color: #3B6D11; }
+    .post { background: #E6F1FB; color: #185FA5; }
+    .endpoint-path { font-size: 13px; font-family: monospace; color: #1a1a1a; }
+    .endpoint-desc { font-size: 11px; color: #888; margin-left: auto; }
+    .ai-tag { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: #FAEEDA; color: #854F0B; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 8px; background: #185FA5; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
+    .btn-primary:hover { background: #0C447C; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { padding: 8px 14px; border-radius: 8px; background: #fff; color: #555; font-size: 13px; cursor: pointer; border: 1px solid #E5E5E3; }
+    .btn-secondary:hover { background: #F5F5F4; }
+    .ai-card { background: #fff; border: 1px solid #E5E5E3; border-radius: 12px; padding: 20px; }
+    .ai-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #F0F0EE; }
+    .ai-icon { width: 32px; height: 32px; border-radius: 8px; background: #E6F1FB; display: flex; align-items: center; justify-content: center; }
+    .ai-icon i { color: #185FA5; font-size: 16px; }
+    .ai-card-title { font-size: 14px; font-weight: 600; }
+    .ai-card-sub { font-size: 11px; color: #888; margin-top: 2px; }
+    .model-pill { margin-left: auto; padding: 3px 12px; border-radius: 99px; background: #FAEEDA; color: #854F0B; font-size: 11px; font-weight: 600; border: 1px solid #FAC775; }
+    .field-label { font-size: 12px; font-weight: 500; color: #555; margin-bottom: 6px; }
+    textarea { width: 100%; min-height: 100px; resize: vertical; font-size: 13px; font-family: inherit; color: #1a1a1a; padding: 10px 12px; border: 1px solid #E5E5E3; border-radius: 8px; background: #FAFAF9; outline: none; }
+    textarea:focus { border-color: #185FA5; background: #fff; }
+    .char-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 4px; margin-bottom: 14px; }
+    .btn-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .result-box { background: #FAFAF9; border: 1px solid #E5E5E3; border-radius: 10px; padding: 14px 16px; min-height: 80px; }
+    .result-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #aaa; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .result-text { font-size: 13px; color: #1a1a1a; line-height: 1.7; }
+    .result-placeholder { font-size: 13px; color: #bbb; font-style: italic; }
+    .meta-row { display: flex; gap: 16px; margin-top: 10px; }
+    .meta-chip { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+    .error-box { background: #FCEBEB; border: 1px solid #F7C1C1; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #A32D2D; margin-top: 8px; display: none; }
+    .spinner { display: none; width: 14px; height: 14px; border: 2px solid #E6F1FB; border-top-color: #185FA5; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .config-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #F0F0EE; }
+    .config-chip { padding: 8px 12px; background: #FAFAF9; border: 1px solid #E5E5E3; border-radius: 8px; }
+    .config-key { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+    .config-val { font-size: 12px; font-weight: 500; color: #555; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo"><i class="ti ti-rocket"></i></div>
+    <div>
+      <div class="topbar-title">DevOps Starter Kit</div>
+      <div class="topbar-sub">github.com/devSharma31/devops-starter-kit</div>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot"></div>
+    <span id="statusText">Checking...</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard', this)">
+      <i class="ti ti-layout-dashboard"></i> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('summarise', this)">
+      <i class="ti ti-sparkles"></i> AI Summariser
+      <span class="nav-badge">GPT-4o</span>
+    </div>
+    <div class="nav-item" onclick="showPage('endpoints', this)">
+      <i class="ti ti-api"></i> Endpoints
+    </div>
+
+    <div class="sidebar-label">Infrastructure</div>
+    <div class="nav-item disabled">
+      <i class="ti ti-brand-azure"></i> Azure App Service
+      <span class="nav-badge green">live</span>
+    </div>
+    <div class="nav-item disabled">
+      <i class="ti ti-box"></i> Docker
+    </div>
+    <div class="nav-item disabled">
+      <i class="ti ti-git-branch"></i> CI/CD Pipeline
+    </div>
+
+    <div class="sidebar-label">Docs</div>
+    <div class="nav-item" onclick="window.open('/docs','_blank')">
+      <i class="ti ti-file-description"></i> API Docs
+    </div>
+    <div class="nav-item" onclick="window.open('https://github.com/devSharma31/devops-starter-kit','_blank')">
+      <i class="ti ti-brand-github"></i> GitHub Repo
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Project overview</div>
+      <div class="page-sub">FastAPI · Docker · GitHub Actions · Terraform · Azure App Service · Azure OpenAI GPT-4o</div>
+
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-label">API status</div>
+          <div class="metric-val" id="healthVal" style="color:#3B6D11;">—</div>
+          <div class="metric-sub">GET /health</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total endpoints</div>
+          <div class="metric-val">3</div>
+          <div class="metric-sub">1 AI-powered</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">AI model</div>
+          <div class="metric-val" style="font-size:15px; padding-top:3px;">GPT-4o</div>
+          <div class="metric-sub">Azure OpenAI</div>
+        </div>
+      </div>
+
+      <div class="field-label" style="margin-bottom:10px;">Tech stack</div>
+      <div class="stack-row">
+        <div class="stack-chip"><i class="ti ti-brand-python" style="font-size:14px;"></i> Python / FastAPI</div>
+        <div class="stack-chip"><i class="ti ti-box" style="font-size:14px;"></i> Docker</div>
+        <div class="stack-chip"><i class="ti ti-git-branch" style="font-size:14px;"></i> GitHub Actions</div>
+        <div class="stack-chip"><i class="ti ti-brand-terraform" style="font-size:14px;"></i> Terraform</div>
+        <div class="stack-chip"><i class="ti ti-brand-azure" style="font-size:14px;"></i> Azure App Service</div>
+        <div class="stack-chip ai"><i class="ti ti-sparkles" style="font-size:14px;"></i> Azure OpenAI GPT-4o</div>
+      </div>
+
+      <div class="field-label" style="margin-bottom:10px;">API endpoints</div>
+      <div class="endpoint-list">
+        <div class="endpoint-row">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/health</span>
+          <span class="endpoint-desc">Health check</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/</span>
+          <span class="endpoint-desc">Dashboard UI</span>
+        </div>
+        <div class="endpoint-row ai-row">
+          <span class="method-badge post">POST</span>
+          <span class="endpoint-path">/summarize</span>
+          <span class="endpoint-desc">AI-powered text summarisation</span>
+          <span class="ai-tag"><i class="ti ti-sparkles" style="font-size:10px;"></i> GPT-4o</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="showPage('summarise', null)" style="margin-top:4px;">
+        <i class="ti ti-sparkles"></i> Try the AI Summariser
+      </button>
+    </div>
+
+    <!-- AI SUMMARISER -->
+    <div class="page" id="page-summarise">
+      <div class="page-title">AI Summariser</div>
+      <div class="page-sub">Powered by Azure OpenAI GPT-4o · POST /summarize</div>
+      <div class="ai-card">
+        <div class="ai-card-header">
+          <div class="ai-icon"><i class="ti ti-sparkles"></i></div>
+          <div>
+            <div class="ai-card-title">Text summarisation</div>
+            <div class="ai-card-sub">Paste any text — incident reports, release notes, DevOps docs</div>
+          </div>
+          <div class="model-pill">GPT-4o</div>
+        </div>
+
+        <div class="field-label">Input text</div>
+        <textarea id="inputText" placeholder="Paste your text here..." oninput="updateMeta()"></textarea>
+        <div class="char-row">
+          <span id="tokenEst">~0 tokens</span>
+          <span id="charCount">0 characters</span>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="submitBtn" onclick="callSummarise()">
+            <i class="ti ti-sparkles"></i> Summarise
+            <div class="spinner" id="spinner"></div>
+          </button>
+          <button class="btn-secondary" onclick="clearAll()">Clear</button>
+        </div>
+
+        <div class="result-box">
+          <div class="result-label">
+            <i class="ti ti-robot" style="font-size:12px;"></i>
+            AI summary
+          </div>
+          <div id="resultText" class="result-placeholder">Your AI-generated summary will appear here...</div>
+        </div>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <div class="meta-row" id="metaRow" style="display:none;">
+          <div class="meta-chip"><i class="ti ti-clock" style="font-size:12px;"></i> <span id="latencyVal">—</span></div>
+          <div class="meta-chip"><i class="ti ti-brand-azure" style="font-size:12px;"></i> Azure OpenAI · GPT-4o</div>
+          <div class="meta-chip"><i class="ti ti-shield-check" style="font-size:12px;"></i> Key via env var</div>
+        </div>
+
+        <div class="config-row">
+          <div class="config-chip">
+            <div class="config-key">temperature</div>
+            <div class="config-val">0.3</div>
+          </div>
+          <div class="config-chip">
+            <div class="config-key">max_tokens</div>
+            <div class="config-val">150</div>
+          </div>
+          <div class="config-chip">
+            <div class="config-key">endpoint</div>
+            <div class="config-val">POST /summarize</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENDPOINTS -->
+    <div class="page" id="page-endpoints">
+      <div class="page-title">API endpoints</div>
+      <div class="page-sub">All available routes in this deployment</div>
+      <div class="endpoint-list">
+        <div class="endpoint-row">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/</span>
+          <span class="endpoint-desc">Dashboard UI</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/health</span>
+          <span class="endpoint-desc">Returns service health status</span>
+        </div>
+        <div class="endpoint-row ai-row">
+          <span class="method-badge post">POST</span>
+          <span class="endpoint-path">/summarize</span>
+          <span class="endpoint-desc">AI text summarisation via Azure OpenAI GPT-4o</span>
+          <span class="ai-tag"><i class="ti ti-sparkles" style="font-size:10px;"></i> GPT-4o</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method-badge get">GET</span>
+          <span class="endpoint-path">/docs</span>
+          <span class="endpoint-desc">Swagger UI — interactive API documentation</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+async function checkHealth() {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      document.getElementById('statusText').textContent = 'All systems operational';
+      document.getElementById('healthVal').textContent = 'Healthy';
+    }
+  } catch {
+    document.getElementById('statusText').textContent = 'Service unreachable';
+    document.getElementById('healthVal').textContent = 'Offline';
+    document.getElementById('healthVal').style.color = '#A32D2D';
+  }
+}
+
+function updateMeta() {
+  const txt = document.getElementById('inputText').value;
+  document.getElementById('charCount').textContent = txt.length + ' characters';
+  document.getElementById('tokenEst').textContent = '~' + Math.round(txt.length / 4) + ' tokens';
+}
+
+async function callSummarise() {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('submitBtn');
+  const spinner = document.getElementById('spinner');
+  const result = document.getElementById('resultText');
+  const errBox = document.getElementById('errorBox');
+  const meta = document.getElementById('metaRow');
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  result.className = 'result-placeholder';
+  result.textContent = 'Calling Azure OpenAI GPT-4o...';
+  errBox.style.display = 'none';
+  meta.style.display = 'none';
+
+  const start = Date.now();
+  try {
+    const res = await fetch('/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    const latency = ((Date.now() - start) / 1000).toFixed(2);
+
+    if (!res.ok) {
+      errBox.textContent = 'Error: ' + (data.detail || 'Something went wrong');
+      errBox.style.display = 'block';
+      result.textContent = 'Request failed.';
+    } else {
+      result.className = 'result-text';
+      result.textContent = data.summary;
+      document.getElementById('latencyVal').textContent = latency + 's response time';
+      meta.style.display = 'flex';
+    }
+  } catch (e) {
+    errBox.textContent = 'Network error: ' + e.message;
+    errBox.style.display = 'block';
+    result.textContent = 'Request failed.';
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+function clearAll() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('resultText').className = 'result-placeholder';
+  document.getElementById('resultText').textContent = 'Your AI-generated summary will appear here...';
+  document.getElementById('metaRow').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('charCount').textContent = '0 characters';
+  document.getElementById('tokenEst').textContent = '~0 tokens';
+}
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) { el.classList.add('active'); }
+  else {
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.textContent.includes('Summariser')) n.classList.add('active');
+    });
+  }
+}
+
+checkHealth();
+</script>
+</body>
+</html>
