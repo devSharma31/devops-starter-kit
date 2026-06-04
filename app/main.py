@@ -39,7 +39,10 @@ def summarize(request: SummariseRequest):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant that summarises text clearly and concisely in 2-3 sentences."
+                   "content": (
+                            "You are a helpful assistant that "
+                            "summarises text clearly and concisely in 2-3 sentences."
+                            ),
                 },
                 {
                     "role": "user",
