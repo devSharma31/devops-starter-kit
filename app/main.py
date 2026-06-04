@@ -12,11 +12,12 @@ app = FastAPI(title="DevOps Starter Kit")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-client = AzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_KEY"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-)
+def get_openai_client() -> AzureOpenAI:
+    return AzureOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_KEY"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+    )
 
 class SummariseRequest(BaseModel):
     text: str
@@ -34,15 +35,15 @@ def summarize(request: SummariseRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
     try:
-        response = client.chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             model=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
             messages=[
                 {
                     "role": "system",
-                   "content": (
-                            "You are a helpful assistant that "
-                            "summarises text clearly and concisely in 2-3 sentences."
-                            ),
+                    "content": (
+                        "You are a helpful assistant that "
+                        "summarises text clearly and concisely in 2-3 sentences."
+                    ),
                 },
                 {
                     "role": "user",
