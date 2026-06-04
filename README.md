@@ -1,217 +1,277 @@
-# DevOps Starter Kit — FastAPI • Docker • CI/CD • Azure • Terraform
+# DevOps Starter Kit
 
 ![CI/CD](https://github.com/devSharma31/devops-starter-kit/actions/workflows/ci-cd.yml/badge.svg?branch=main)
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi)
+![Azure](https://img.shields.io/badge/Azure-App%20Service-0078D4?logo=microsoftazure)
+![OpenAI](https://img.shields.io/badge/Azure%20OpenAI-GPT--4o-orange?logo=openai)
+![Terraform](https://img.shields.io/badge/Terraform-IaC-7B42BC?logo=terraform)
+![Docker](https://img.shields.io/badge/Docker-Containerised-2496ED?logo=docker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-A **sandbox** project to demonstrate real DevOps skills safely and honestly for interviews.
+A production-style cloud application demonstrating real DevOps and GenAI engineering skills — built for hands-on learning and interview demonstration.
 
-## Why this matters (interview lens)
-- Support/Cloud: Health probe + rollback runbook = safe, reversible changes.
-- DevOps: GitHub Actions pipeline (lint/test/deploy), Terraform RG/AppService/WebApp.
-- Evidence: screenshots in /evidence for CI→CD logs, tf apply outputs, and alerts.
-> Demo: push → pipeline → Azure live /health in ~2–3 min.
+**Live demo:** https://devops-starter-webapp-dev31.azurewebsites.net
 
 ---
 
-## What’s inside
-- **FastAPI** app with `/health` and a root redirect (`/` → `/health`)
-- **Dockerfile** and `docker-compose.yml`
-- **Pytest** unit test
-- **GitHub Actions** CI/CD (lint + test + **deploy to Azure Web App**)
-- **Terraform (foundational)**: Azure Resource Group, Linux App Service Plan, Web App
-- **README** instructions, rollback notes, and **evidence** screenshots
+## What this project demonstrates
 
-> ⚠️ Never commit secrets. Use GitHub **Secrets**.
-
----
-
-## Quick Start
-1. **Fork/clone** this repo.
-2. **Secrets (Repo → Settings → Secrets & variables → Actions):**
-   - `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`, `AZURE_PUBLISH_PROFILE` (or OIDC if you’ve set it up)
-3. **Run locally**:
-   ```bash
-   uvicorn app.main:app --reload
-   curl http://127.0.0.1:8000/health
-4. **Deploy: push to main.** Check Actions → on success, browse https://<webapp-name>.azurewebsites.net/health.
-
----
-## Prereqs
-- Python **3.11+**
-- Git
-- (Optional) Docker Desktop
-- Azure CLI (`az`) and Terraform (only needed if you run Terraform locally)
+| Skill area | What was built |
+|---|---|
+| Cloud infrastructure | Azure App Service provisioned via Terraform |
+| CI/CD pipeline | GitHub Actions — lint → test → deploy → smoke test |
+| GenAI integration | Azure OpenAI GPT-4o `/summarize` endpoint |
+| Security | API keys in env vars, secret scanning, `.gitignore` |
+| Frontend | Dashboard UI served from FastAPI static files |
+| IaC | Terraform with import, lifecycle rules, state management |
+| Observability | Health check endpoint, post-deploy smoke test |
 
 ---
 
-## 1) Run locally
+## Architecture
 
-### Windows (PowerShell)
+```
+Browser / Client
+      │
+      ▼
+Azure App Service (Central India)
+      │
+      ├── GET  /          → Dashboard UI (HTML/CSS/JS)
+      ├── GET  /health    → {"status": "ok"}
+      ├── POST /summarize → Azure OpenAI GPT-4o
+      └── GET  /docs      → Swagger UI
+            │
+            ▼
+    Azure OpenAI Service (East US 2)
+         GPT-4o · temperature 0.3 · max_tokens 150
+```
+
+**CI/CD flow:**
+```
+git push → build-test (ruff + pytest) → deploy (Azure WebApp) → smoke-test (health + AI check)
+```
+
+**Infrastructure (Terraform):**
+```
+Azure Subscription
+└── Resource Group: devops-starter-rg (East US)
+    ├── App Service Plan: asp-devops-starter (Central India, B1)
+    └── Linux Web App: devops-starter-webapp-dev31 (Python 3.11, gunicorn)
+```
+
+---
+
+## Tech stack
+
+- **Backend** — Python 3.11, FastAPI, Uvicorn, Gunicorn
+- **AI** — Azure OpenAI Service (GPT-4o), openai Python SDK
+- **Infrastructure** — Terraform (azurerm ~3.100), Azure App Service
+- **CI/CD** — GitHub Actions (ruff lint, pytest, Azure deploy, smoke test)
+- **Containerisation** — Docker, docker-compose
+- **Security** — python-dotenv, GitHub Secrets, GitHub secret scanning
+
+---
+
+## Local development
+
+### Prerequisites
+- Python 3.11+
+- Azure subscription (free trial works)
+- Azure OpenAI resource with GPT-4o deployed
+
+### 1 — Clone and set up environment
+
 ```powershell
+git clone https://github.com/devSharma31/devops-starter-kit.git
+cd devops-starter-kit
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+### 2 — Configure environment variables
+
+Copy the example file and fill in your values:
+
+```powershell
+copy .env.example .env
+```
+
+```bash
+# .env — never commit this file
+AZURE_OPENAI_KEY=your_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_API_VERSION=2025-01-01-preview
+```
+
+### 3 — Run locally
+
+```powershell
 uvicorn app.main:app --reload
-# http://127.0.0.1:8000/health
-
 ```
 
-### MacOS / Linux
-```
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-# http://127.0.0.1:8000/health
+Visit `http://127.0.0.1:8000` — the dashboard loads in your browser.
 
+Test the AI endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:8000/summarize \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Your text to summarise here"}'
 ```
 
-## 2) Run with Docker
+### 4 — Run with Docker
+
+```bash
 docker compose up --build
 ```
-http://127.0.0.1:8000/health
-```
 
+### 5 — Run tests
 
-
-## 3) Tests
-```
+```bash
 pytest -q
 ```
 
+---
 
-## 4) CI/CD with GitHub Actions
+## API reference
 
-Workflow: .github/workflows/ci-cd.yml
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Dashboard UI |
+| `GET` | `/health` | Service health check |
+| `POST` | `/summarize` | AI-powered text summarisation |
+| `GET` | `/docs` | Swagger interactive docs |
 
-Pipeline
+### POST /summarize
 
-- On push/PR to main: Setup Python → install deps → ruff → pytest
-
-- Then deploys to Azure Web App using a Publish Profile secret
-
-Required repo secret (one-time)
-
--AZURE_WEBAPP_PUBLISH_PROFILE → paste the XML from Azure Portal → App Service → Get publish profile
-(or via CLI: az webapp deployment list-publishing-profiles --resource-group <rg> --name <webapp> --xml)
-
-
-App name
-
--Hard-coded in the workflow deploy job:
+**Request:**
+```json
+{
+  "text": "Text you want summarised"
+}
 ```
-env:
-  AZURE_WEBAPP_NAME: devops-starter-webapp-dev31
-```
-Change here if you rename the app.
 
+**Response:**
+```json
+{
+  "summary": "AI-generated 2-3 sentence summary of your text."
+}
+```
 
-## 5) Terraform (foundational)
+**Model config:** GPT-4o · temperature `0.3` · max_tokens `150`
+
+---
+
+## CI/CD pipeline
+
+Workflow file: `.github/workflows/ci-cd.yml`
+
 ```
-Folder: terraform/ — Creates Resource Group, Linux App Service Plan, Web App.
+push to main
+    │
+    ▼
+build-test
+    ├── Checkout code
+    ├── Setup Python 3.11
+    ├── Install dependencies
+    ├── Ruff lint check
+    └── Pytest unit tests
+    │
+    ▼
+deploy (needs: build-test)
+    ├── Checkout code
+    ├── Validate publish profile secret
+    └── Deploy to Azure Web App
+    │
+    ▼
+smoke-test (needs: deploy)
+    ├── Wait 30s for app warm-up
+    ├── GET /health → assert 200
+    └── POST /summarize → assert "summary" in response
 ```
+
+**Required GitHub Secret:**
+
 ```
+AZURE_WEBAPP_PUBLISH_PROFILE  →  XML from Azure Portal → App Service → Download publish profile
+```
+
+---
+
+## Terraform infrastructure
+
+```bash
 cd terraform
-# Windows: copy terraform.tfvars.example terraform.tfvars
-# macOS/Linux:
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars:
-# - subscription_id = "<your-sub-id>"
-# - webapp_name     = "devops-starter-webapp-<unique>"
-# - location        = "Central India" (or nearest)
-# - sku_name        = "F1" (Free; if unavailable, use "B1")
-terraform init
-terraform plan
-terraform apply
-```
 
-Outputs
-```
+# Copy and configure variables
+copy terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your subscription_id and Azure OpenAI credentials
+
+terraform init
+terraform plan    # review before applying
+terraform apply
 terraform output webapp_url
 ```
 
-Refresh-only apply (nice for screenshots)
-```
-terraform apply -refresh-only
-```
+**Key variables in `terraform.tfvars`:**
 
-Rollback / clean-up
-terraform destroy
-```
-# Emergency: stop Web App in Portal
-```
+| Variable | Description |
+|---|---|
+| `subscription_id` | Azure subscription ID |
+| `location` | Resource group region |
+| `app_location` | App Service region (can differ from RG) |
+| `sku_name` | App Service tier (B1 recommended) |
+| `azure_openai_key` | Azure OpenAI API key (sensitive) |
+| `azure_openai_endpoint` | Azure OpenAI base endpoint URL |
 
-## 6) App Service configuration (how it boots)
+> **Security:** `terraform.tfvars` is gitignored. Never commit it.
 
-- Startup command required for FastAPI on App Service:
-```
-gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app
-```
+---
 
-(Set via Terraform/CLI.)
+## Real-world engineering decisions
 
-- HTTPS only:
-```
-az webapp update -g rg-devops-starter -n devops-starter-webapp-dev31 --set httpsOnly=true
-```
+**Lazy client initialisation** — the `AzureOpenAI` client is initialised inside `get_openai_client()` rather than at module level. This prevents import-time crashes in CI where OpenAI credentials are not available during the test phase.
 
-- Free (F1) plan: always_on = false and cold starts are normal after idle.
+**Separate app_location variable** — Azure free trial accounts have zero VM quota in certain regions. By separating the resource group location from the App Service location, resources can be provisioned in a region with available quota without moving the resource group.
 
+**Terraform lifecycle rules** — `prevent_destroy = true` on the resource group prevents accidental deletion via `terraform apply`. `ignore_changes = [tags]` prevents tag drift from triggering unnecessary updates.
 
-## 7) Proofs & Screenshots
+**Post-deploy smoke test** — the CI/CD pipeline validates not just that the app deployed, but that the Azure OpenAI integration is responding correctly on the live URL. A deployment that passes unit tests but fails the AI smoke test catches integration-level regressions.
 
-Place all images in /evidence:
+---
 
-- CI → CD success:
+## Troubleshooting
 
-- Deploy logs:
+**`ModuleNotFoundError: No module named 'app'` in CI**
+Set `PYTHONPATH: ${{ github.workspace }}` in the pytest step environment.
 
-- Terraform apply (refresh-only) & outputs:
+**`OpenAIError: Missing credentials` on import**
+The client is being initialised at module level. Move it inside a `get_openai_client()` function so it's only called at request time.
 
-- Azure resources:
+**`401 Unauthorized — quota exceeded` on Terraform apply**
+Your subscription has zero VM quota in that region. Add `app_location` variable and set it to a region with available quota (e.g. `Central India`).
 
-- Live health:
+**Deploy fails with invalid publish profile**
+Download a fresh publish profile from the new App Service in Azure Portal. Old profiles from deleted resources are invalid.
 
+**`requirements.txt` parse error in CI**
+Re-save as UTF-8 (no UTF-16 BOM). This causes `\x00` null bytes that break `pip install`.
 
+---
 
-## 8) Extensions 
+## Evidence
 
-- Deployment Slots + slot swap for zero-downtime rollouts
+Screenshots in `/evidence`:
+- CI/CD pipeline — all three jobs green
+- Terraform apply output
+- Live dashboard at azurewebsites.net
+- AI summariser response
 
-- Remote state for Terraform (Azure Storage + SAS)
+---
 
-- PostgreSQL (Azure Flexible Server) or containerized DB (secrets in Key Vault)
+## License
 
-- Azure Monitor metrics/alerts (CPU, 5xx, latency p95, availability SLO)
-
-- Cost tags on resources (project, owner, env)
-
-
-
-## 9) Troubleshooting quickies
-
-- Deploy step: “Missing AZURE_WEBAPP_PUBLISH_PROFILE”
-  Re-create the repo secret and paste the full XML (don’t trim).
-
-- App returns 500 after deploy
-  Ensure startup command is set, then restart:
-```
-az webapp config set -g rg-devops-starter -n devops-starter-webapp-dev31 --startup-file "gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app"
-
-az webapp restart     -g rg-devops-starter -n devops-starter-webapp-dev31
-```
-
-- Pytest import error for app
-  Ensure app/__init__.py exists and CI sets PYTHONPATH if needed.
-
-- requirements.txt parse error
-  Re-save as UTF-8/ASCII (no UTF-16 BOM / null bytes).
-
-
-
-
-## 10) License
-
-MIT (or your choice).
-```
-::contentReference[oaicite:0]{index=0}
-```
+MIT
