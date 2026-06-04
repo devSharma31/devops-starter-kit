@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -60,3 +63,36 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
+
+smoke-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for app to warm up
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://devops-starter-webapp-dev31.azurewebsites.net/health)
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "FAILED — /health returned $STATUS"
+            exit 1
+          fi
+          echo "PASSED — app is live and healthy"
+
+      - name: AI summarise smoke test
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            https://devops-starter-webapp-dev31.azurewebsites.net/summarize \
+            -H "Content-Type: application/json" \
+            -d '{"text": "DevOps combines software development and IT operations to accelerate delivery and improve reliability through automation and continuous integration."}')
+          echo "Response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q '"summary"'; then
+            echo "PASSED — Azure OpenAI GPT-4o responded correctly on live deployment"
+          else
+            echo "FAILED — summary field missing from response"
+            echo "Full response: $RESPONSE"
+            exit 1
+          fi
