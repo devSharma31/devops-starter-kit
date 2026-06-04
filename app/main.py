@@ -1,10 +1,10 @@
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from openai import AzureOpenAI
-from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
