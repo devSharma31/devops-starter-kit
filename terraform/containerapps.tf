@@ -14,6 +14,7 @@ resource "azurerm_container_app" "app" {
   container_app_environment_id = azurerm_container_app_environment.cae.id
   resource_group_name          = azurerm_resource_group.rg.name
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
 
   secret {
     name  = "azure-openai-key"
@@ -65,3 +66,4 @@ resource "azurerm_container_app" "app" {
     ignore_changes = [template[0].container[0].image]
   }
 }
+

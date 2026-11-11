@@ -21,24 +21,6 @@ variable "resource_group_name" {
   default     = "rg-devops-starter-kit"
 }
 
-variable "app_service_plan_name" {
-  description = "App Service Plan name"
-  type        = string
-  default     = "asp-devops-starter-kit"
-}
-
-variable "webapp_name" {
-  description = "Web App name (must be globally unique)"
-  type        = string
-  default     = "devops-starter-webapp-demo"
-}
-
-variable "sku_name" {
-  description = "App Service SKU"
-  type        = string
-  default     = "B1"
-}
-
 variable "azure_openai_key" {
   description = "Azure OpenAI API key"
   type        = string

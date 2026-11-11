@@ -1,7 +1,4 @@
-
-subscription_id     = "00000000-0000-0000-0000-000000000000"
-location            = "Central India"
+# subscription_id is passed via TF_VAR_subscription_id (not committed)
+location            = "East US"
 resource_group_name = "rg-devops-starter"
-app_service_plan_name = "asp-devops-starter"
-webapp_name         = "devops-starter-webapp-yourinitials"
-sku_name            = "B1"
+# Secrets: set TF_VAR_azure_openai_key and TF_VAR_azure_openai_endpoint
