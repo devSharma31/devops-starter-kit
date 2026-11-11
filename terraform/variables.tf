@@ -61,3 +61,21 @@ variable "azure_openai_api_version" {
   type        = string
   default     = "2025-01-01-preview"
 }
+
+variable "container_env_name" {
+  description = "Container Apps environment name"
+  type        = string
+  default     = "cae-devops-starter-kit"
+}
+
+variable "container_app_name" {
+  description = "Container App name (lowercase, max 32 chars)"
+  type        = string
+  default     = "devops-starter-app-dev31"
+}
+
+variable "container_image" {
+  description = "Initial container image (CI/CD updates it afterwards)"
+  type        = string
+  default     = "ghcr.io/devsharma31/devops-starter-kit:latest"
+}

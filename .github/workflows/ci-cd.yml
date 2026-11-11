@@ -3,15 +3,19 @@ name: CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feat/container-apps" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  IMAGE_NAME: ghcr.io/devsharma31/devops-starter-kit
+  RESOURCE_GROUP: rg-devops-starter-kit
+  CONTAINER_APP: devops-starter-app-dev31
 
 jobs:
   build-test:
@@ -35,64 +39,89 @@ jobs:
 
       - name: Run tests
         env:
-         PYTHONPATH: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}
         run: python -m pytest -q
 
-  deploy:
+  image:
     needs: build-test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    environment: production
-    env:
-      AZURE_WEBAPP_NAME: devops-starter-webapp-dev31   # <-- hard-coded to avoid vars.*
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Clear, explicit check so failures are obvious
-      - name: Check publish profile presence
-        run: |
-          if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
-            echo "Missing secret: AZURE_WEBAPP_PUBLISH_PROFILE"; exit 1
-          else
-            echo "Publish profile secret present"
-          fi
-
-      - name: Azure WebApp Deploy
-        uses: azure/webapps-deploy@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    needs: image
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC login to Azure, no stored credentials
+    outputs:
+      fqdn: ${{ steps.rollout.outputs.fqdn }}
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Roll out new image
+        id: rollout
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az containerapp update \
+            -n "$CONTAINER_APP" -g "$RESOURCE_GROUP" \
+            --image "$IMAGE_NAME:${{ github.sha }}" -o none
+          FQDN=$(az containerapp show -n "$CONTAINER_APP" -g "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "fqdn=$FQDN" >> "$GITHUB_OUTPUT"
+          echo "Deployed to https://$FQDN"
 
   smoke-test:
     needs: deploy
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://${{ needs.deploy.outputs.fqdn }}
     steps:
-      - name: Wait for app to warm up
-        run: sleep 30
-
-      - name: Health check
+      - name: Health check (allows for scale-from-zero cold start)
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://devops-starter-webapp-dev31.azurewebsites.net/health)
-          echo "Health check status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "FAILED — /health returned $STATUS"
-            exit 1
-          fi
-          echo "PASSED — app is live and healthy"
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$BASE_URL/health" || true)
+            echo "Attempt $i: /health returned $STATUS"
+            [ "$STATUS" = "200" ] && echo "PASSED — app is live and healthy" && exit 0
+            sleep 10
+          done
+          echo "FAILED — /health never returned 200"; exit 1
 
       - name: AI summarise smoke test
         run: |
-          RESPONSE=$(curl -s -X POST \
-            https://devops-starter-webapp-dev31.azurewebsites.net/summarize \
+          RESPONSE=$(curl -s --max-time 60 -X POST "$BASE_URL/summarize" \
             -H "Content-Type: application/json" \
             -d '{"text": "DevOps combines software development and IT operations to accelerate delivery and improve reliability through automation and continuous integration."}')
           echo "Response: $RESPONSE"
           if echo "$RESPONSE" | grep -q '"summary"'; then
-            echo "PASSED — Azure OpenAI GPT-4o responded correctly on live deployment"
+            echo "PASSED — Azure OpenAI GPT-4o responded on the live Container App"
           else
-            echo "FAILED — summary field missing from response"
-            echo "Full response: $RESPONSE"
-            exit 1
+            echo "FAILED — summary field missing from response"; exit 1
           fi
