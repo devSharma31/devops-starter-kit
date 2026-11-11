@@ -18,13 +18,13 @@ variable "app_location" {
 variable "resource_group_name" {
   description = "Resource group name"
   type        = string
-  default     = "devops-starter-rg"
+  default     = "rg-devops-starter-kit"
 }
 
 variable "app_service_plan_name" {
   description = "App Service Plan name"
   type        = string
-  default     = "asp-devops-starter"
+  default     = "asp-devops-starter-kit"
 }
 
 variable "webapp_name" {
