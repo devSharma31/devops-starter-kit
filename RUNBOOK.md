@@ -1,129 +1,136 @@
-# RUNBOOK — DevOps Starter Kit (App Service)
+# RUNBOOK — DevOps Starter Kit (v3, Azure Container Apps)
 
-## Environments
-- Azure Web App: `devops-starter-webapp-dev31`
-- Resource group: `rg-devops-starter`
-- Region: Central India
-- Plan: F1 (Free), `always_on=false`
+## Service overview
 
-## Health & endpoints
-- Health: `GET /health` → `{"status":"ok"}`
-- Root: redirects to `/health`
+| Item | Value |
+|---|---|
+| Container App | `devops-starter-app-dev31` |
+| Environment | `cae-devops-starter-kit` (Central India, Consumption profile) |
+| Resource group | `rg-devops-starter-kit` (East US) |
+| Azure OpenAI | `devops-starter-kit-instance` (East US), deployment `gpt-4o` |
+| Image | `ghcr.io/devsharma31/devops-starter-kit:<git-sha>` (public package) |
+| URL | https://devops-starter-app-dev31.jollyglacier-afc01775.centralindia.azurecontainerapps.io |
+| Scaling | min 0 / max 1 replica — scales to zero after ~5 min idle |
 
-## How to deploy (CI/CD)
-- Push to `main` → GitHub Actions runs `build-test` then `deploy`.
-- Secrets:
-  - `AZURE_WEBAPP_PUBLISH_PROFILE` (repo secret)
+Shell variables used below:
 
-## Manual deploy (fallback)
-1) Download publish profile from the Web App (Portal → Overview → Get publish profile).
-2) From VS Code:
-   - Update code → commit → `git push`.
-   - If CI is down: Portal → Deployment Center → “Sync” (uses last Good package).
-
-
-## Startup command (required for FastAPI)
-
-gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app
-
-Check/reset:
-```
-az webapp show    -g rg-devops-starter -n devops-starter-webapp-dev31 --query siteConfig.appCommandLine -o tsv
-az webapp config set -g rg-devops-starter -n devops-starter-webapp-dev31 --startup-file "gunicorn -w 2 -k u
-
-Rollback
-- Redeploy last green build from Actions (re-run - deploy on a previous successful run).
-
-If app is unhealthy: Portal → Web App → Stop (emergency freeze).
-
-Logs & debugging
-- az webapp log config -g rg-devops-starter -n - - devops-starter-webapp-dev31 --application-logging filesystem
-
-```
-az webapp log tail   -g rg-devops-starter -n devops-starter-webapp-dev31
-```
-
-Terraform (infra)
-```
-cd terraform
-terraform plan
-terraform apply
-# Clean-up
-terraform destroy
-```
-
-Security notes
-
-- Never commit secrets.
-
--  Rotate publish profile if leaked (Portal → Get publish profile).
-
-```
-Then:
 ```powershell
-git add RUNBOOK.md
-git commit -m "docs: add operational RUNBOOK"
-git push
+$RG  = "rg-devops-starter-kit"
+$APP = "devops-starter-app-dev31"
+$URL = "https://" + (az containerapp show -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)
 ```
 
-## 3) Add an Azure alert (proof you can operate it)
+---
 
-Copy-paste in PowerShell (same sub):
-```
-# IDs
-$RG   = "rg-devops-starter"
-$APP  = "devops-starter-webapp-dev31"
-$APPID = az webapp show -g $RG -n $APP --query id -o tsv
+## Health checks
 
-# Action Group to your email
-$EMAIL = "devsharma1619@gmail.com"
-az monitor action-group create -g $RG -n ag-email --action email DevNotify $EMAIL
-$AGID = az monitor action-group show -g $RG -n ag-email --query id -o tsv
+```powershell
+Invoke-WebRequest "$URL/health" -TimeoutSec 60 | Select-Object StatusCode, Content   # expect 200 {"status":"ok"}
 
-# Alert: low CPU threshold (so it will actually trigger on F1)
-az monitor metrics alert create -g $RG -n cpu-gt-5 `
-  --scopes $APPID `
-  --condition "avg Percentage CPU > 5" `
-  --window-size 5m --evaluation-frequency 1m `
-  --action $AGID
+az containerapp revision list -n $APP -g $RG `
+  --query "[].{name:name, active:properties.active, health:properties.healthState, running:properties.runningState}" -o table
 ```
 
+`runningState` of `ScaledToZero` is normal when idle. The first request after idle takes ~5–15 s.
 
-Trigger some load to help it fire:
+---
 
-```
-$u = "https://devops-starter-webapp-dev31.azurewebsites.net/health"
-1..400 | % { Invoke-WebRequest $u -UseBasicParsing | Out-Null }
-```
+## Deploy
 
-Screenshot the alert rule + the email and commit as:
+**Normal path:** merge or push to `main`. GitHub Actions runs build-test → image → deploy → smoke-test.
 
-```
-evidence/09-alert-rule.png
-evidence/10-alert-email.png
-```
+**Manual deploy of a specific image** (CI unavailable):
 
-## 4) Repo cosmetics (fast wins)
-
-- Description: “FastAPI demo with Docker, GitHub -Actions CI/CD to Azure App Service, Terraform IaC (foundational).”
-
-- Topics: fastapi, docker, github-actions, terraform, azure, iac.
-
-- License: add LICENSE (MIT).
-
-```
-MIT License … (your name, year)
-```
-```
-git add LICENSE && git commit -m "chore: add MIT license" && git push
+```powershell
+az containerapp update -n $APP -g $RG --image ghcr.io/devsharma31/devops-starter-kit:<git-sha>
 ```
 
-## 5) CV/Interview hooks (use these exact lines)
+**Pipeline auth:** OIDC via app registration `gh-devops-starter-kit-deploy`. GitHub secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` are identifiers only. The federated credential trusts `repo:devSharma31/devops-starter-kit:ref:refs/heads/main`; the role is Contributor on the container app only.
 
-- “Built a sandboxed CI/CD: ruff + pytest → GitHub Actions deploy to Azure Web App using publish profile secrets.”
+---
 
-- “Provisioned infra with Terraform (foundational): RG, Linux Plan, Web App, health check path.”
+## Rollback
 
-- “Set startup command (gunicorn+UvicornWorker), enabled HTTPS-only, added CPU alert with email action group.”
+Revision mode is `Single`, so roll back by redeploying a previous image tag:
 
-- “Rollback via re-deploy last green; logs via az webapp log tail.”
+```powershell
+# Find the last good commit SHA in Actions (a green run), then:
+az containerapp update -n $APP -g $RG --image ghcr.io/devsharma31/devops-starter-kit:<good-sha>
+```
+
+Or re-run the deploy job of the last green workflow run in GitHub Actions.
+
+---
+
+## Logs and debugging
+
+No Log Analytics workspace is attached (keeps idle cost at zero), so use live streams:
+
+```powershell
+az containerapp logs show -n $APP -g $RG --type console --follow   # app stdout/stderr
+az containerapp logs show -n $APP -g $RG --type system  --follow   # scaling, image pulls, probes
+```
+
+Send a request in another tab to wake the app if it is scaled to zero.
+
+| Symptom | Likely cause | Check |
+|---|---|---|
+| Browser HTTPS / DNS error | Resource or subscription gone | `nslookup <fqdn>` — NXDOMAIN means the app no longer exists |
+| `/summarize` returns 500 | OpenAI key, endpoint or deployment wrong | `az containerapp show -n $APP -g $RG --query properties.template.containers[0].env` |
+| Revision unhealthy after deploy | Image fails to start or wrong port | System logs; container must listen on 8000 |
+| Image pull failure | GHCR package private | Package settings → visibility Public |
+| Deploy job fails at login | Federated credential subject mismatch | `az ad app federated-credential list --id <client-id>` |
+
+---
+
+## Secrets and rotation
+
+**Rotate the Azure OpenAI key:**
+
+```powershell
+az cognitiveservices account keys regenerate -n devops-starter-kit-instance -g $RG --key-name key1
+# then re-apply Terraform so the container app secret is updated
+cd terraform
+$env:TF_VAR_azure_openai_key = az cognitiveservices account keys list -n devops-starter-kit-instance -g $RG --query key1 -o tsv
+terraform plan -out tfplan; terraform apply tfplan; Remove-Item tfplan
+```
+
+There is no stored Azure deploy credential to rotate — OIDC tokens are issued per workflow run.
+
+---
+
+## Terraform
+
+Run from Azure Cloud Shell (persistent storage) or any machine with the state file:
+
+```powershell
+cd terraform
+$env:TF_VAR_subscription_id       = az account show --query id -o tsv
+$env:TF_VAR_azure_openai_endpoint = az cognitiveservices account show -n devops-starter-kit-instance -g rg-devops-starter-kit --query properties.endpoint -o tsv
+$env:TF_VAR_azure_openai_key      = az cognitiveservices account keys list -n devops-starter-kit-instance -g rg-devops-starter-kit --query key1 -o tsv
+
+terraform plan -out tfplan    # always review: nothing unexpected to destroy
+terraform apply tfplan
+Remove-Item tfplan            # plan files contain the key
+```
+
+`terraform.tfstate` and `tfplan` contain the OpenAI key in plain text and are gitignored — never commit them.
+
+---
+
+## Cost controls
+
+- Idle cost is ₹0: no replicas run while idle and no Log Analytics workspace is attached.
+- Azure OpenAI bills per token only; demo usage is negligible.
+- Keep a subscription budget alert in Cost Management (Budgets) as a safety net.
+- To take the app fully offline: `az containerapp ingress disable -n $APP -g $RG` (re-enable with `ingress enable --type external --target-port 8000`).
+
+---
+
+## Incident log
+
+**2026-11-10 — Live demo returning HTTPS error**
+- *Symptom:* browser error on `devops-starter-webapp-dev31.azurewebsites.net`.
+- *Root cause:* original Azure subscription expired; App Service deleted; hostname returned NXDOMAIN.
+- *Fix:* rebuilt on a new subscription with Terraform (imported the existing resource group). Free F1 plan rejected deploys with `Site Disabled (403)`, so temporarily ran on B1.
+- *Follow-up:* migrated to Container Apps (v3) for zero idle cost and OIDC deploys; App Service removed.
