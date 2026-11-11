@@ -1,4 +1,3 @@
-subscription_id       = "c43b6e7e-65b5-4458-a15e-ac02d3ac30e8"
 location              = "East US" # or your nearest region
 resource_group_name   = "rg-devops-starter-kit"
 app_service_plan_name = "asp-devops-starter-kit"
